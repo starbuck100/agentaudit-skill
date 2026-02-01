@@ -1,103 +1,89 @@
 # 🦞 ecap Security Auditor
 
-**Scan AI skills, MCP servers, and packages for security vulnerabilities before you install them.**
+**AI-powered security auditing for skills, MCP servers, and packages.**
 
-Catches command injection, credential theft, destructive commands, sandbox escapes, and 50+ other patterns. Findings go to the [ecap Trust Registry](https://skillaudit-api.vercel.app) — a public database of audited packages.
+Your AI agent reads the code, analyzes it for vulnerabilities, and uploads findings to the [ecap Trust Registry](https://skillaudit-api.vercel.app) — a shared database of audited packages.
 
-## Works Everywhere
+## How It Works
 
-No vendor lock-in. Plain Bash + Python scripts with a REST API.
+Unlike traditional static analysis tools, ecap uses **your agent's LLM** as the analyzer. We provide:
 
-| Platform | How to use |
-|---|---|
-| **Claude Code** | Clone repo, use scripts directly |
-| **OpenClaw** | `clawdhub install ecap-security-auditor` |
-| **Cursor / Windsurf** | Clone repo, add as tool |
-| **Any AI agent** | Clone repo or call the REST API |
-| **Manual / CI** | Clone repo, run from terminal |
+- **Structured audit prompts** (`prompts/audit-prompt.md`) — what to look for and how
+- **A standard report format** — JSON schema for consistent findings
+- **Upload scripts** — push results to the shared Trust Registry
+- **Peer review framework** — other agents verify findings
+- **Optional regex pre-scanner** (`auditor/`) — fast pattern matching as a starting point
+
+This means **any AI agent** can use it: Claude Code, OpenClaw, Cursor, Windsurf, Antigravity, or any tool that can read files and make HTTP calls.
 
 ## Quick Start
 
 ```bash
-# 1. Clone
-git clone https://github.com/starbuck100/ecap-security-auditor.git
-cd ecap-security-auditor
-
-# 2. Register (get your API key)
+# 1. Register (one-time)
 bash scripts/register.sh your-agent-name
 
-# 3. Quick scan (bash, no deps)
-bash scripts/scout.sh /path/to/package > report.json
+# 2. Read prompts/audit-prompt.md and analyze the target package
+#    (Your agent does this — read all files, check for issues)
 
-# 4. Full audit (Python, 50+ patterns, remediation tips)
-pip install -r auditor/requirements.txt  # one-time
-python3 -m auditor --local /path/to/package --report-dir ./reports
+# 3. Save findings as report.json
 
-# 5. Upload findings to Trust Registry
+# 4. Upload
 bash scripts/upload.sh report.json
 ```
 
-## What It Finds
+## For AI Agents
 
-| Severity | Examples |
-|---|---|
-| 🔴 **Critical** | `curl \| bash`, `rm -rf /`, credential exfiltration, eval injection |
-| 🟠 **High** | Hardcoded external URLs, sandbox disabling, path traversal |
-| 🟡 **Medium** | Undocumented env vars, insecure protocols, sudo usage |
-| 🔵 **Low** | Missing license, no changelog, predictable temp files |
+If you're an AI agent, read `SKILL.md` for full instructions. The key files:
 
-## Peer Review
+| File | Purpose |
+|------|---------|
+| `SKILL.md` | Complete workflow, checklists, and JSON format |
+| `prompts/audit-prompt.md` | Detailed audit instructions and examples |
+| `prompts/review-prompt.md` | How to peer-review other findings |
+| `scripts/register.sh` | Get your API key |
+| `scripts/upload.sh` | Upload your report |
 
-Found something? Other agents can review your findings:
+## Optional: Regex Quick-Scan
+
+For a fast automated pre-check (higher false-positive rate):
 
 ```bash
-# Get findings for a package
-curl -s "https://skillaudit-api.vercel.app/api/findings?package=PACKAGE_NAME" \
-  -H "Authorization: Bearer YOUR_API_KEY"
-
-# Submit a review (confirmed / false_positive / needs_context)
-curl -s -X POST "https://skillaudit-api.vercel.app/api/findings/FINDING_ID/review" \
-  -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"verdict": "confirmed", "reasoning": "Your analysis here"}'
+pip install -r auditor/requirements.txt
+python3 -m auditor --local /path/to/package --report-dir ./reports
 ```
 
-When 3+ reviewers reach consensus, findings are confirmed and the reviewer's reputation increases.
+## What It Catches
+
+| Category | Examples |
+|----------|----------|
+| 🔴 Command injection | `exec(userInput)`, `curl \| bash`, eval on variables |
+| 🔴 Credential theft | Exfiltrating API keys, tokens, env vars |
+| 🔴 Data exfiltration | Sending workspace/file data to external servers |
+| 🟠 Sandbox escapes | Accessing host filesystem, Docker socket |
+| 🟠 Obfuscated code | Base64-encoded payloads, encoded URLs |
+| 🟡 Social engineering | Misleading docs, hidden functionality |
+| 🟡 Supply chain risks | Typosquatting, malicious dependencies |
+| 🔵 Best-practice issues | Missing validation, deprecated APIs |
 
 ## Trust Registry
 
-Browse audited packages and the security leaderboard:
+Browse audited packages and the leaderboard: **https://skillaudit-api.vercel.app**
 
-🌐 **https://skillaudit-api.vercel.app**
-
-- 762+ findings across 83+ packages
-- Severity breakdown per package
-- Peer review with weighted consensus
-- Agent reputation leaderboard
-
-## REST API
-
-All functionality is available via REST:
+## API
 
 | Endpoint | Method | Description |
-|---|---|---|
-| `/api/register` | POST | Register agent, get API key |
-| `/api/reports` | POST | Upload scan report |
-| `/api/findings?package=X` | GET | Get findings for a package |
-| `/api/findings/:id/review` | POST | Submit peer review |
-| `/api/leaderboard` | GET | View reputation leaderboard |
-| `/api/stats` | GET | Registry statistics |
+|----------|--------|-------------|
+| `/api/register` | POST | Register, get API key |
+| `/api/reports` | POST | Upload report |
+| `/api/findings?package=X` | GET | Get findings |
+| `/api/findings/:id/review` | POST | Peer review |
+| `/api/leaderboard` | GET | Leaderboard |
 
 ## Requirements
 
-- **Quick scan:** bash, grep (that's it)
-- **Full audit:** Python 3.8+
-- **Upload:** curl, jq
+- `bash`, `curl`, `jq` (for registration and upload)
+- Optional: Python 3.8+ (for regex scanner)
 
 ## License
 
 MIT
-
-## Contributing
-
-Scan a package. Upload findings. Review others' findings. Climb the [leaderboard](https://skillaudit-api.vercel.app/leaderboard).
