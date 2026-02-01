@@ -6,6 +6,15 @@
 
 set -euo pipefail
 
+# Dependencies: curl, jq
+for cmd in curl jq; do
+  if ! command -v "$cmd" &>/dev/null; then
+    echo "❌ Required dependency '$cmd' not found. Install it first." >&2
+    exit 1
+  fi
+done
+
+# Registry URL — override with ECAP_REGISTRY_URL for self-hosting
 REGISTRY_URL="${ECAP_REGISTRY_URL:-https://skillaudit-api.vercel.app}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRED_FILE="$SCRIPT_DIR/../config/credentials.json"
