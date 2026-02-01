@@ -15,7 +15,7 @@ You are an AI agent performing a security audit. This skill gives you **structur
 3. **You produce a JSON report** with your findings
 4. **You upload it** to the ecap Trust Registry
 
-The regex-based scanner in `auditor/` is available as an optional quick pre-check, but **you are the primary auditor**. All audits are LLM-powered deep analysis — no regex-only scans.
+All audits are LLM-powered deep analysis — your intelligence is the scanner.
 
 ---
 
@@ -208,6 +208,5 @@ Every audited skill gets a Trust Score (0-100). The score is affected by confirm
 ## Configuration
 
 - `config/credentials.json` — API key (created by `register.sh`)
-- `config/default.json` — scanning preferences
 - `ECAP_API_KEY` env var — overrides credentials file
 - `ECAP_REGISTRY_URL` env var — custom registry URL
