@@ -4,8 +4,8 @@
 # Dependencies: curl, jq, sha256sum (or shasum on macOS)
 set -euo pipefail
 
-API_URL="${1:-https://skillaudit-api.vercel.app/api/integrity}"
-PACKAGE="ecap-security-auditor"
+PACKAGE="${1:?Usage: verify.sh <package-name> [api-url]}"
+API_URL="${2:-https://skillaudit-api.vercel.app/api/integrity}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 

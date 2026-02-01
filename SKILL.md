@@ -55,7 +55,8 @@ Run the Security Gate automatically when:
               │ Yes
               ▼
 ┌─────────────────────────────┐
-│ 3. Evaluate Trust Score     │
+│ 3. Calculate Trust Score    │
+│    from findings (see below)│
 └──────────────┬──────────────┘
                ▼
      ┌─────────┴─────────┐
@@ -93,14 +94,31 @@ curl -s "https://skillaudit-api.vercel.app/api/integrity?package=PACKAGE_NAME"
 **Step 2: Verify Integrity**
 
 ```bash
-bash scripts/verify.sh PACKAGE_NAME
+bash scripts/verify.sh <package-name> [api-url]
+# Example: bash scripts/verify.sh ecap-security-auditor
 ```
 
-This compares SHA-256 hashes of local files against the hashes stored during the last audit. If any file has changed since it was audited, the check fails.
+This compares SHA-256 hashes of local files against the hashes stored during the last audit. If any file has changed since it was audited, the check fails. The package name is **required** as the first argument.
 
-**Step 3: Apply Decision Logic**
+**Step 3: Calculate Trust Score & Apply Decision Logic**
 
-Based on the Trust Score from the findings response, apply the decision table above.
+The API does **not** provide a Trust Score endpoint. Calculate it yourself from the findings:
+
+```
+Trust Score = max(0, 100 - penalties)
+
+Penalties per finding:
+  Critical: -25
+  High:     -15
+  Medium:    -8
+  Low:       -3
+```
+
+**Example:** 1 critical + 2 medium findings → 100 - 25 - 8 - 8 = **59** (⚠️ Caution)
+
+If the package has a report in `/api/reports`, you can also use the `risk_score` from the report: `Trust Score = 100 - risk_score`.
+
+Apply the decision table above based on the calculated Trust Score.
 
 **Step 4: Auto-Audit (if no data exists)**
 
@@ -114,6 +132,23 @@ If the registry has no report for this package:
 6. Re-run the gate check with the new data
 
 This is how the registry grows organically — every agent contributes.
+
+### Finding Package Files for Auto-Audit
+
+| Type | Location |
+|------|----------|
+| OpenClaw skill | `skills/<name>/` in your workspace |
+| npm package | `node_modules/<name>/` |
+| pip package | Run `pip show <name> \| grep Location`, then `<location>/<name>/` |
+| MCP server | Check the MCP config for the server's install path |
+
+### Package Slug
+
+Use the **exact package name** as the slug (e.g., `mcp-server-fetch`, not `mcp-fetch`). You can verify known packages via `/api/health` (shows total counts) or check `/api/findings?package=<name>` — if `total > 0`, the package exists in the registry.
+
+### Finding IDs in API URLs
+
+When using `/api/findings/:id/review` or `/api/findings/:id/fix`, use the **numeric `id`** field from the findings response (not the `ecap_id` string like `ECAP-2026-0777`).
 
 ---
 
@@ -232,8 +267,10 @@ curl -s -X POST "https://skillaudit-api.vercel.app/api/findings/FINDING_ID/fix" 
 
 ```json
 {
-  "package_name": "example-package",
-  "package_type": "npm|pip|mcp|skill",
+  "skill_slug": "example-package",
+  "risk_score": 75,
+  "result": "safe|caution|unsafe|clean|pass|fail",
+  "findings_count": 1,
   "findings": [
     {
       "severity": "critical|high|medium|low",
@@ -246,13 +283,11 @@ curl -s -X POST "https://skillaudit-api.vercel.app/api/findings/FINDING_ID/fix" 
       "confidence": "high|medium|low",
       "remediation": "Use execFile() with an args array instead of string interpolation"
     }
-  ],
-  "summary": {
-    "files_analyzed": 15,
-    "risk_score": 75,
-    "recommendation": "safe|caution|unsafe"
-  }
+  ]
 }
+```
+
+> **Important:** `skill_slug` (or `package_name` as alias), `risk_score`, `result`, and `findings_count` are **all required top-level fields**. Do NOT nest `risk_score` or `result` inside a `summary` object — the API will reject it.
 ```
 
 ### Severity Classification

@@ -77,8 +77,10 @@ Produce a JSON report in this exact format:
 
 ```json
 {
-  "package_name": "the-package-name",
-  "package_type": "npm|pip|mcp|skill",
+  "skill_slug": "the-package-name",
+  "risk_score": 75,
+  "result": "safe|caution|unsafe",
+  "findings_count": 1,
   "findings": [
     {
       "severity": "critical",
@@ -91,13 +93,11 @@ Produce a JSON report in this exact format:
       "confidence": "high",
       "remediation": "Specific fix: use X instead of Y"
     }
-  ],
-  "summary": {
-    "files_analyzed": 15,
-    "risk_score": 75,
-    "recommendation": "unsafe"
-  }
+  ]
 }
+```
+
+> **Required top-level fields:** `skill_slug`, `risk_score`, `result`, `findings_count`, `findings`. Do NOT nest risk_score/result inside a summary object.
 ```
 
 ### Pattern ID Prefixes
