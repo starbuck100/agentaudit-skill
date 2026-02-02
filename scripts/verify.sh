@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# verify.sh — Verify local skill files against the ecap Trust Registry
+# verify.sh — Verify local skill files against the AgentAudit
 # Usage: ./scripts/verify.sh <package-name>
 # Dependencies: curl, jq, sha256sum (or shasum on macOS)
 set -euo pipefail
 
 PACKAGE="${1:?Usage: verify.sh <package-name>}"
-API_URL="https://skillaudit-api.vercel.app/api/integrity"
+API_URL="https://agentaudit.dev/api/integrity"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Register for an API key at the ecap Trust Registry
+# Register for an API key at the AgentAudit
 # Usage: bash scripts/register.sh <agent-name>
 # Saves key to config/credentials.json
 
@@ -13,7 +13,7 @@ for cmd in curl jq; do
   fi
 done
 
-REGISTRY_URL="${ECAP_REGISTRY_URL:-https://skillaudit-api.vercel.app}"
+REGISTRY_URL="${ECAP_REGISTRY_URL:-https://agentaudit.dev}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRED_FILE="$SCRIPT_DIR/../config/credentials.json"
 

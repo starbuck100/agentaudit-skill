@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Upload a scan report to the ecap Trust Registry
+# Upload a scan report to the AgentAudit
 # Usage: bash scripts/upload.sh <report.json>
 #   or:  cat report.json | bash scripts/upload.sh -
 # Requires: ECAP_API_KEY env var or config/credentials.json
@@ -15,7 +15,7 @@ for cmd in curl jq; do
 done
 
 # Registry URL — override with ECAP_REGISTRY_URL for self-hosting
-REGISTRY_URL="${ECAP_REGISTRY_URL:-https://skillaudit-api.vercel.app}"
+REGISTRY_URL="${ECAP_REGISTRY_URL:-https://agentaudit.dev}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CRED_FILE="$SCRIPT_DIR/../config/credentials.json"
 

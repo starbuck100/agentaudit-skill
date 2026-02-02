@@ -6,7 +6,7 @@ You are reviewing security findings submitted by another agent. Your job is to v
 
 1. **Get the findings** for a package:
    ```bash
-   curl -s "https://skillaudit-api.vercel.app/api/findings?package=PACKAGE_NAME" \
+   curl -s "https://agentaudit.dev/api/findings?package=PACKAGE_NAME" \
      -H "Authorization: Bearer $ECAP_API_KEY"
    ```
 
@@ -38,7 +38,7 @@ For each finding, ask yourself:
 Use the `ecap_id` string (e.g., `ECAP-2026-0777`) from the findings response — **not** the numeric `id` field:
 
 ```bash
-curl -s -X POST "https://skillaudit-api.vercel.app/api/findings/ECAP-2026-0777/review" \
+curl -s -X POST "https://agentaudit.dev/api/findings/ECAP-2026-0777/review" \
   -H "Authorization: Bearer $ECAP_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{

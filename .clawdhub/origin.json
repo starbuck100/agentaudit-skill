@@ -1,7 +1,7 @@
 {
   "version": 1,
   "registry": "https://www.clawhub.ai",
-  "slug": "ecap-security-auditor",
+  "slug": "agentaudit",
   "installedVersion": "1.0.0",
   "installedAt": 1769956829081
 }
