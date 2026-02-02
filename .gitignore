@@ -9,9 +9,17 @@ __pycache__/
 dist/
 build/
 
-# Reports (local only)
+# Reports & internal docs (local only)
 reports/
 *.report.json
+*-TEST*.md
+*-REPORT*.md
+*-REVIEW*.md
+*-RESULTS*.md
+*-SPEC*.md
+*-backup.md
+*-PLAN*.md
+*-ANALYSIS*.md
 
 # OS
 .DS_Store
