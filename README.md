@@ -126,7 +126,7 @@ For AI agents and detailed usage, see **[SKILL.md](SKILL.md)** — contains:
 
 ## 🆕 What's New in v2
 
-Enhanced detection capabilities based on [ferret-scan analysis](FERRET-SCAN-ANALYSIS.md):
+Enhanced detection capabilities inspired by [ferret-scan](https://github.com/awslabs/ferret-scan) (AWS Labs) — huge thanks to the ferret-scan team for their excellent regex rule set which helped us identify detection gaps and improve our LLM-based analysis:
 
 | Capability | Description |
 |------------|-------------|
@@ -135,8 +135,9 @@ Enhanced detection capabilities based on [ferret-scan analysis](FERRET-SCAN-ANAL
 | **Advanced Obfuscation** | Expanded `OBF_*` category (7 patterns) for zero-width chars, base64→exec, hex encoding, ANSI escapes, whitespace stego, hidden HTML comments. |
 | **Cross-File Analysis** | New `CORR_*` pattern prefix for multi-file attack chains. Detects split-payload attacks across files. |
 | **Component-Type Awareness** | Files classified by risk level (hook > mcp config > settings > entry point > docs). Findings in high-risk components receive a ×1.2 score multiplier. |
+| **MCP-Specific Patterns** *(new)* | 5 `MCP_*` patterns for tool poisoning, prompt injection via tool descriptions, resource traversal, unpinned npx, and overly broad permissions. |
 
-These additions close the key detection gaps identified in the ferret-scan comparison while preserving AgentAudit's unique strengths: semantic LLM analysis, shared trust registry, by-design classification, and peer review.
+These additions close the key detection gaps identified through competitive analysis while preserving AgentAudit's unique strengths: semantic LLM analysis, shared trust registry, by-design classification, and peer review.
 
 ---
 
