@@ -637,6 +637,25 @@ Use all three for comprehensive security.
 
 ---
 
+## 🧠 Recommended Models
+
+AgentAudit's LLM-powered audits work best with large, capable models that can reason about code security:
+
+| Model | Quality | Notes |
+|-------|---------|-------|
+| **Claude Opus 4.5** ⭐ | Best | Recommended. Deepest code understanding, fewest false positives |
+| **Claude Sonnet 4** | Great | Best balance of speed and quality for batch audits |
+| **GPT-4o** | Great | Strong alternative, good at pattern detection |
+| **Claude 4.5** | Great | Fast and capable, solid for most audits |
+| **Gemini 2.5 Pro** | Good | Works well, especially for larger codebases |
+| **Llama 3.3 70B+** | Good | Best open-source option for local/private audits |
+
+> **Smaller models (<30B parameters) are not recommended** — they tend to miss subtle attack patterns and produce more false positives. Security auditing requires strong reasoning capabilities.
+
+For batch auditing many packages, **Claude Sonnet 4** offers the best cost/quality ratio. For critical packages where accuracy matters most, use **Claude Opus 4.5**.
+
+---
+
 ## 📄 License
 
 [MIT](LICENSE)
