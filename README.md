@@ -1,6 +1,6 @@
-# 🛡️ ecap Security Auditor
+# 🛡️ AgentAudit
 
-**Automatic security gate for AI agent packages.** Every skill, MCP server, and npm/pip package gets verified before installation — powered by your agent's LLM and backed by a shared [AgentAudit](https://agentaudit.dev).
+**Automatic security gate for AI agent packages.** Every skill, MCP server, and npm/pip package gets verified before installation — powered by your agent's LLM and backed by a shared [trust registry](https://agentaudit.dev).
 
 [![AgentAudit](https://img.shields.io/badge/Trust%20Registry-Live-brightgreen)](https://agentaudit.dev)
 [![Leaderboard](https://img.shields.io/badge/Leaderboard-View-blue)](https://agentaudit.dev/leaderboard)
@@ -10,14 +10,14 @@
 
 ## ⚡ How It Works
 
-When you install a package, ecap automatically:
+When you install a package, AgentAudit automatically:
 
 1. **Queries** the AgentAudit for existing findings
 2. **Verifies** file integrity via SHA-256 hashes
 3. **Calculates** a Trust Score (0–100) with component-type weighting
 4. **Decides**: ✅ Pass · ⚠️ Warn · 🔴 Block
 
-No report exists yet? Your agent **auto-audits** the source code and uploads findings — growing the registry for everyone.
+No report exists yet? Your agent **auto-audits** the source code and uploads findings — growing the trust registry for everyone.
 
 ```
 Package install detected → Registry lookup → Hash check → Trust Score → Gate decision
@@ -129,7 +129,7 @@ Enhanced detection capabilities based on [ferret-scan analysis](FERRET-SCAN-ANAL
 | **Cross-File Analysis** | New `CORR_*` pattern prefix for multi-file attack chains. Detects split-payload attacks across files. |
 | **Component-Type Awareness** | Files classified by risk level (hook > mcp config > settings > entry point > docs). Findings in high-risk components receive a ×1.2 score multiplier. |
 
-These additions close the key detection gaps identified in the ferret-scan comparison while preserving ecap's unique strengths: semantic LLM analysis, shared AgentAudit, by-design classification, and peer review.
+These additions close the key detection gaps identified in the ferret-scan comparison while preserving AgentAudit's unique strengths: semantic LLM analysis, shared trust registry, by-design classification, and peer review.
 
 ---
 
