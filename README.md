@@ -530,68 +530,98 @@ When reporting bugs, please include:
 
 ---
 
+## ⚠️ Important: Limitations & Honest Expectations
+
+Before the FAQ, let's be upfront about what AgentAudit **can and cannot do**:
+
+> **AgentAudit is a skill, not a firewall.** It relies on the AI agent reading and following `SKILL.md` instructions. No agent platform currently offers hard pre-install hooks that can enforce a security gate at the OS level. This means:
+
+- ✅ **When it works:** The agent reads `SKILL.md`, checks the registry before installing, and follows the PASS/WARN/BLOCK guidance. Most well-built agents (Claude Code, Cursor, OpenClaw, etc.) do follow skill instructions reliably.
+- ⚠️ **When it might not work:** If the agent ignores `SKILL.md`, skips the check, or is manipulated by prompt injection into bypassing the gate. Skills are advisory, not mandatory.
+- 🔒 **For guaranteed coverage:** Run `bash scripts/check.sh <package-name>` manually before installing. This gives you a direct registry lookup independent of any agent behavior.
+
+**Bottom line:** AgentAudit dramatically raises the bar — from zero security checks to structured LLM-powered audits with a shared registry. But it's one layer in defense-in-depth, not a silver bullet. Treat it like a seatbelt: it helps a lot, but you should still drive carefully.
+
+---
+
 ## ❓ FAQ
 
 ### Q: Does AgentAudit actually block installations?
 
-**A:** The gate operates via prompts in `SKILL.md` that the agent reads and follows. It's cooperative by design. For hard enforcement, combine with OS-level sandboxing (containers, VMs, or permission systems).
+**A:** Honestly — it depends on the agent. AgentAudit works through `SKILL.md` instructions that tell the agent to check the registry before installing anything. When the trust score is below 40, the instructions say to refuse the installation and explain why. **Most agents follow these instructions reliably**, but no current platform guarantees enforcement.
+
+Think of it like a security policy: it works when everyone follows it. For hard enforcement, combine with:
+- OS-level sandboxing (containers, VMs)
+- Permission systems that restrict `npm install` / `pip install`
+- Manual pre-checks: `bash scripts/check.sh <package-name>`
 
 ### Q: What happens if agentaudit.dev is down?
 
-**A:** The gate script will timeout and fail-safe to WARN mode, allowing the agent to proceed with caution. You can also run offline audits using just the LLM analysis (no registry lookup).
+**A:** The check script (`scripts/check.sh`) will timeout after a few seconds. When this happens, the agent **should** treat the package as unverified and proceed with extra caution — but this depends on the agent following `SKILL.md` guidance. There is no automatic fail-safe mechanism built into the OS.
+
+For offline usage, the agent can still run a local LLM-powered audit on the source code directly, without needing the registry.
+
+### Q: Is every install guaranteed to be scanned?
+
+**A:** **No.** This is important to understand. AgentAudit is a skill — it provides instructions and tools, but cannot force an agent to use them. Reasons a scan might be skipped:
+- The agent doesn't have AgentAudit installed
+- The agent's platform doesn't load skill descriptions into context
+- The agent is under prompt injection that overrides the security gate
+- The agent decides to skip the check (unlikely with good agents, but possible)
+
+**If you need certainty**, run the check manually:
+```bash
+bash scripts/check.sh <package-name>
+```
 
 ### Q: Can I audit private/proprietary packages?
 
-**A:** Yes. The audit runs locally. You control what gets uploaded. Set the `AGENTAUDIT_UPLOAD=false` environment variable to disable registry uploads entirely.
+**A:** Yes. The audit runs locally using your agent's LLM. You control what gets uploaded. Set `AGENTAUDIT_UPLOAD=false` to disable registry uploads entirely — your audit stays local.
 
 ### Q: How accurate are the LLM-based audits?
 
-**A:** LLM analysis is good at detecting patterns but not perfect. It should be used as one layer in defense-in-depth:
-- ✅ Catches novel attacks that regex might miss
-- ✅ Understands context and intent
-- ❌ May produce false positives
-- ❌ Requires peer review for confidence
+**A:** LLM analysis is good at detecting patterns but not perfect. It's one layer in defense-in-depth:
+- ✅ Catches novel attacks that regex scanners miss
+- ✅ Understands context and intent (e.g. "this `eval()` is by-design in a REPL framework")
+- ❌ May produce false positives (that's why we have peer review)
+- ❌ Can miss extremely novel zero-day techniques
 
-That's why we have the peer review system — multiple agents verify findings.
-
-### Q: What's the performance impact?
-
-**A:** First installation of a package triggers an audit (10-30 seconds depending on package size). Subsequent installations are instant (registry cache hit). Typical flow adds <2 seconds for a registry lookup.
+The peer review system helps: multiple agents verify findings, building confidence scores over time.
 
 ### Q: Can malicious packages fool the audit?
 
 **A:** No security system is perfect. AgentAudit detects:
-- ✅ Most obfuscation techniques (base64, hex, unicode)
-- ✅ Multi-file attack chains
-- ✅ Sophisticated agent-specific attacks
-- ❌ Extremely novel zero-days unknown to the LLM
-- ❌ Attacks that activate long after installation
+- ✅ Most obfuscation techniques (base64, hex, unicode, zero-width chars)
+- ✅ Multi-file attack chains (credential harvest → exfiltration)
+- ✅ AI-specific attacks (prompt injection, tool poisoning, capability escalation)
+- ❌ Extremely novel techniques unknown to the LLM
+- ❌ Time-delayed attacks that activate long after installation
 
 Use defense-in-depth: sandboxing + monitoring + AgentAudit.
 
+### Q: What's the performance impact?
+
+**A:** First install of an unknown package: 10-30 seconds (LLM audit). Known packages: <2 seconds (registry cache hit).
+
 ### Q: How do I register my agent?
 
-**A:** Run the registration script once:
+**A:**
 ```bash
 bash scripts/register.sh my-unique-agent-name
 ```
-
-This generates an agent ID stored in `.agent_id` for attribution in the registry.
-
-### Q: What license is AgentAudit under?
-
-**A:** MIT License. See [LICENSE](LICENSE) for details.
+Generates an agent ID stored in `.agent_id` for attribution in the registry.
 
 ### Q: Can I run my own trust registry?
 
-**A:** Yes! The API endpoints are documented. Set the `AGENTAUDIT_REGISTRY_URL` environment variable to point to your instance:
+**A:** Yes. Set the registry URL:
 ```bash
 export AGENTAUDIT_REGISTRY_URL="https://your-registry.com"
 ```
+The API endpoints are fully documented.
 
 ### Q: How does this compare to traditional security scanning?
 
-**A:** AgentAudit complements traditional tools:
+**A:** AgentAudit complements traditional tools — it doesn't replace them:
 
 | Tool Type | Coverage | Agent-Aware |
 |-----------|----------|-------------|
@@ -600,6 +630,10 @@ export AGENTAUDIT_REGISTRY_URL="https://your-registry.com"
 | **AgentAudit** | AI-specific attacks, prompt injection, capability escalation | ✅ |
 
 Use all three for comprehensive security.
+
+### Q: What license is AgentAudit under?
+
+**A:** MIT License. See [LICENSE](LICENSE).
 
 ---
 
