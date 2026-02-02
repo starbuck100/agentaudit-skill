@@ -10,7 +10,7 @@
 
 [![Trust Registry](https://img.shields.io/badge/Trust_Registry-Live-00C853?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTEyIDJMMyA3djZjMCA1LjU1IDMuODQgMTAuNzQgOSAxMiA1LjE2LTEuMjYgOS02LjQ1IDktMTJWN2wtOS01eiIvPjwvc3ZnPg==)](https://agentaudit.dev)
 [![Leaderboard](https://img.shields.io/badge/Leaderboard-View-2196F3?style=for-the-badge)](https://agentaudit.dev/leaderboard)
-[![License](https://img.shields.io/badge/License-MIT-F9A825?style=for-the-badge)](LICENSE)
+[![License](https://img.shields.io/badge/License-AGPL_3.0-F9A825?style=for-the-badge)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/starbuck100/agentaudit-skill?style=for-the-badge&color=yellow)](https://github.com/starbuck100/agentaudit-skill)
 
 </div>
@@ -557,7 +557,7 @@ Think of it like a security policy: it works when everyone follows it. For hard 
 
 ### Q: What happens if agentaudit.dev is down?
 
-**A:** The check script (`scripts/check.sh`) will timeout after a few seconds. When this happens, the agent **should** treat the package as unverified and proceed with extra caution — but this depends on the agent following `SKILL.md` guidance. There is no automatic fail-safe mechanism built into the OS.
+**A:** The gate script (`scripts/gate.sh`) has a built-in fail-safe: if the registry is unreachable (timeout after 15 seconds), it automatically switches to **WARN mode** — returning a clear "⚠️ Registry unreachable — package is UNVERIFIED" message. The agent is instructed not to proceed with installation without user confirmation.
 
 For offline usage, the agent can still run a local LLM-powered audit on the source code directly, without needing the registry.
 
@@ -611,14 +611,6 @@ bash scripts/register.sh my-unique-agent-name
 ```
 Generates an agent ID stored in `.agent_id` for attribution in the registry.
 
-### Q: Can I run my own trust registry?
-
-**A:** Yes. Set the registry URL:
-```bash
-export AGENTAUDIT_REGISTRY_URL="https://your-registry.com"
-```
-The API endpoints are fully documented.
-
 ### Q: How does this compare to traditional security scanning?
 
 **A:** AgentAudit complements traditional tools — it doesn't replace them:
@@ -633,7 +625,7 @@ Use all three for comprehensive security.
 
 ### Q: What license is AgentAudit under?
 
-**A:** MIT License. See [LICENSE](LICENSE).
+**A:** AGPL-3.0 with a commercial license option. The scanner/CLI is AGPL — free to use, modify, and distribute. If you host it as a service, you must publish your source (or get a commercial license). See [LICENSE](LICENSE).
 
 ---
 
@@ -641,24 +633,26 @@ Use all three for comprehensive security.
 
 AgentAudit's LLM-powered audits work best with large, capable models that can reason about code security:
 
-| Model | Quality | Notes |
-|-------|---------|-------|
-| **Claude Opus 4.5** ⭐ | Best | Recommended. Deepest code understanding, fewest false positives |
-| **Claude Sonnet 4** | Great | Best balance of speed and quality for batch audits |
-| **GPT-4o** | Great | Strong alternative, good at pattern detection |
-| **Claude 4.5** | Great | Fast and capable, solid for most audits |
-| **Gemini 2.5 Pro** | Good | Works well, especially for larger codebases |
-| **Llama 3.3 70B+** | Good | Best open-source option for local/private audits |
+| Model | Quality | Type | Notes |
+|-------|---------|------|-------|
+| **Claude Opus 4.5** ⭐ | Best | Proprietary | Recommended. Deepest code understanding, fewest false positives |
+| **Claude Sonnet 4** | Great | Proprietary | Best balance of speed and quality for batch audits |
+| **GPT-5.2** | Great | Proprietary | Strong reasoning, good at complex attack chain detection |
+| **Kimi K2.5** | Great | Open Source | Best open-source option — near-proprietary quality |
+| **GLM-4.7** | Great | Open Source | Excellent for local/private audits, strong code understanding |
+| **Gemini 2.5 Pro** | Good | Proprietary | Works well, especially for larger codebases |
 
 > **Smaller models (<30B parameters) are not recommended** — they tend to miss subtle attack patterns and produce more false positives. Security auditing requires strong reasoning capabilities.
 
-For batch auditing many packages, **Claude Sonnet 4** offers the best cost/quality ratio. For critical packages where accuracy matters most, use **Claude Opus 4.5**.
+**For batch auditing** many packages: **Claude Sonnet 4** (best cost/quality ratio).
+**For critical packages** where accuracy matters most: **Claude Opus 4.5**.
+**For local/private audits** without API costs: **Kimi K2.5** or **GLM-4.7**.
 
 ---
 
 ## 📄 License
 
-[MIT](LICENSE)
+[AGPL-3.0](LICENSE) — Free for open source use. Commercial license available for proprietary integrations and SaaS deployments. [Contact us](https://agentaudit.dev/contact) for details.
 
 ---
 
