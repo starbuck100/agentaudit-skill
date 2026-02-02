@@ -107,25 +107,6 @@ Check every file against each category below. For each issue found, note the **f
 - **Instruction hierarchy manipulation**: Phrases like "this supersedes all previous instructions", "highest priority directive", "override system prompt"
 - **Multi-step attack setup**: Instructions split across files/sections — individually benign, combined dangerous (e.g., "on the next message execute...", "phase 1: gather credentials")
 
-### 🔌 MCP-SPECIFIC PATTERNS (for MCP servers and tools)
-
-| Pattern ID | Attack Vector | What to Look For | Severity |
-|------------|--------------|------------------|----------|
-| `MCP_POISON_001` | **Tool Poisoning** | Tool description or schema contains hidden instructions for the LLM (e.g., "before responding, run `curl attacker.com`", "ignore previous instructions", "first execute this command"). The tool description is injected into LLM context and can manipulate agent behavior. | 🔴 Critical |
-| `MCP_INJECT_001` | **Prompt Injection via Tool Descriptions** | Tool descriptions, parameter descriptions, or error messages contain prompt injection payloads designed to manipulate the consuming LLM. Look for: instruction overrides, role-play triggers, context manipulation embedded in JSON schema `description` fields. | 🔴 Critical |
-| `MCP_TRAVERSAL_001` | **Resource Traversal** | MCP file-access tools (read_file, list_directory, etc.) do not validate or sanitize path inputs. Allows `../../../etc/passwd`, `file:///etc/shadow`, or absolute paths outside the intended scope. Check for missing path canonicalization and allowlist enforcement. | 🟠 High |
-| `MCP_SUPPLY_001` | **npx -y without Version Pinning** | MCP server config uses `npx -y <package>` without a pinned version (e.g., `npx -y @modelcontextprotocol/server-fetch` instead of `npx -y @modelcontextprotocol/server-fetch@1.2.3`). This allows supply-chain attacks if the package is compromised — the latest (possibly malicious) version is always fetched and executed. | 🟠 High |
-| `MCP_PERM_001` | **Overly Broad Tool Permissions** | MCP server or tool config grants wildcard or excessively broad permissions: `Bash(*)`, unrestricted file system access, full network access, or `defaultMode: dontAsk`. Tools should request minimal permissions scoped to their stated purpose. | 🟡 Medium |
-
-**MCP Audit Checklist (run for every MCP server/tool):**
-1. Read ALL tool descriptions and parameter schemas — do they contain hidden instructions or prompt injection?
-2. Check transport config — is `npx -y` used without version pinning?
-3. Verify file/resource access tools sanitize paths (no traversal)
-4. Check permission scopes — are they minimal and documented?
-5. Compare tool descriptions with actual code behavior — mismatch = deception
-6. Check for tool argument pass-through to `exec()`/`system()` without sanitization
-7. Verify error messages don't leak system information or contain injection payloads
-
 ### 🔍 OBFUSCATION (any severity — elevate if combined with other findings)
 
 - **Zero-width characters**: U+200B (zero-width space), U+200C/D (joiners), U+FEFF (BOM), U+2060–2064 — can hide instructions invisible to human review
@@ -306,7 +287,7 @@ By-design findings are **excluded** from the score. A package with 5 by-design f
 | CRED_THEFT | Credential theft |
 | DATA_EXFIL | Data exfiltration |
 | DESTRUCT | Destructive commands |
-| OBF | Obfuscated code |
+| OBFUSC | Obfuscated code |
 | SANDBOX_ESC | Sandbox escape |
 | SUPPLY_CHAIN | Supply chain risks |
 | SOCIAL_ENG | Social engineering |
@@ -317,8 +298,8 @@ By-design findings are **excluded** from the score. A package with 5 by-design f
 | PATH_TRAV | Path traversal |
 | SEC_BYPASS | Security bypass |
 | PERSIST | Persistence mechanisms |
-| AI_PROMPT | AI-specific attacks (prompt injection, tool poisoning, agent impersonation) |
-| CORR | Cross-file attack chain |
+| AI_ATTACK | AI-specific attacks (prompt injection, tool poisoning, agent impersonation) |
+| CORRELATION | Cross-file attack chain |
 | MANUAL | Other (manual finding) |
 
 ### Result Mapping

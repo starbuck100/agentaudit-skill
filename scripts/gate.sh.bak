@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# gate.sh — AgentAudit Security Gate
+# Usage: bash gate.sh <package-manager> <package-name> [extra-args...]
+set -euo pipefail
+
+API_URL="https://agentaudit.dev"
+SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+# --- Args ---
+if [[ $# -lt 2 ]]; then
+  echo '{"error":"Usage: gate.sh <npm|pip|clawhub> <package> [args...]","exit_code":1}' >&2
+  exit 1
+fi
+PM="$1"; PKG="$2"; shift 2; EXTRA_ARGS=("$@")
+
+# --- API Key ---
+load_api_key() {
+  if [[ -n "${ECAP_API_KEY:-}" ]]; then echo "$ECAP_API_KEY"; return; fi
+  local cred="$SCRIPT_DIR/config/credentials.json"
+  if [[ -f "$cred" ]]; then jq -r '.api_key // empty' "$cred" 2>/dev/null; return; fi
+  echo ""
+}
+API_KEY="$(load_api_key)"
+
+# --- Query API ---
+CURL_ARGS=(-sL -f --max-time 15 "${API_URL}/api/findings?package=${PKG}")
+[[ -n "$API_KEY" ]] && CURL_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
+RESPONSE="$(curl "${CURL_ARGS[@]}" 2>/dev/null)" || {
+  echo "{\"gate\":\"error\",\"package\":\"${PKG}\",\"message\":\"API request failed\",\"exit_code\":3}"
+  exit 3
+}
+
+# --- Parse & Score ---
+TOTAL=$(echo "$RESPONSE" | jq '.total // 0')
+if [[ "$TOTAL" -eq 0 ]]; then
+  echo "{\"gate\":\"unknown\",\"package\":\"${PKG}\",\"score\":null,\"total\":0,\"message\":\"No findings - auto-audit recommended\",\"exit_code\":3}"
+  exit 3
+fi
+
+SCORE=$(echo "$RESPONSE" | jq '
+  [.findings // [] | .[] | select(.status != "by_design") |
+    if .severity == "critical" then -25
+    elif .severity == "high" then -15
+    elif .severity == "medium" then -8
+    elif .severity == "low" then -3
+    else 0 end
+  ] | 100 + add
+')
+
+FINDINGS_SUMMARY=$(echo "$RESPONSE" | jq -c '{
+  critical: [.findings[]|select(.severity=="critical" and .status!="by_design")]|length,
+  high:     [.findings[]|select(.severity=="high" and .status!="by_design")]|length,
+  medium:   [.findings[]|select(.severity=="medium" and .status!="by_design")]|length,
+  low:      [.findings[]|select(.severity=="low" and .status!="by_design")]|length,
+  by_design:[.findings[]|select(.status=="by_design")]|length
+}')
+
+# --- Decision ---
+build_output() {
+  jq -nc --arg gate "$1" --arg pkg "$PKG" --argjson score "$SCORE" \
+    --argjson total "$TOTAL" --argjson findings "$FINDINGS_SUMMARY" \
+    --arg msg "$2" --argjson ec "$3" \
+    '{gate:$gate,package:$pkg,score:$score,total:$total,findings:$findings,message:$msg,exit_code:$ec}'
+}
+
+if [[ "$SCORE" -ge 70 ]]; then
+  # PASS — install
+  build_output "pass" "Score ${SCORE}/100 — installing" 0
+  case "$PM" in
+    npm)     npm install "$PKG" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}" ;;
+    pip)     pip install "$PKG" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}" ;;
+    clawhub) clawhub install "$PKG" "${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"}" ;;
+    *)       echo "{\"error\":\"Unknown package manager: ${PM}\"}" >&2; exit 1 ;;
+  esac
+  exit 0
+elif [[ "$SCORE" -ge 40 ]]; then
+  build_output "warning" "Score ${SCORE}/100 — review findings before installing" 2
+  # Show top findings for agent
+  echo "$RESPONSE" | jq -c '[.findings[]|select(.status!="by_design")|{severity,title,status}][:5]' >&2
+  exit 2
+else
+  build_output "block" "Score ${SCORE}/100 — too risky, installation blocked" 1
+  exit 1
+fi

@@ -1,6 +1,6 @@
 ---
 name: agentaudit
-description: "MANDATORY SECURITY GATE — MUST be consulted BEFORE every npm install, pip install, yarn add, pnpm add, npx, clawhub install, or any command that downloads/executes external code. Checks packages against AgentAudit's vulnerability database and blocks unsafe ones. Read this skill FIRST whenever you are about to install anything."
+description: "SECURITY GATE: Intercepts ALL package installations (npm/pip/clawhub) and checks them against AgentAudit before allowing install. Like antivirus — install once, protected forever."
 metadata: {"openclaw":{"requires":{"bins":["bash","jq","curl"]},"triggers":{"install":"always"}}}
 ---
 
@@ -48,17 +48,13 @@ The gate script automatically:
 6. **Blocks dangerous packages** (Score < 40)
 7. Flags unknown packages for auto-audit
 
-### ⚠️ Enforcement Model
-
-This gate is **cooperative/instruction-based** — it works because the agent reads this SKILL.md and follows the instructions. There is **no technical runtime enforcement**: no exec-hook, no shell wrapper, no binary interception. The `triggers.install` metadata in the YAML header is a convention that agents are expected to honor, not a mechanism enforced by OpenClaw's runtime. An agent that ignores the gate and runs `npm install` directly will **not** be blocked. For maximum security, run your agent in **sandbox mode** (OpenClaw Sandboxing), which provides actual OS-level isolation.
-
 ### Exit Codes
 | Code | Meaning | Action |
 |------|---------|--------|
 | 0 | ✅ PASS | Safe — already installed by gate |
 | 1 | 🔴 BLOCKED | Do NOT install. Show user why. |
 | 2 | ⚠️ WARNING | Show findings, let user decide |
-| 3 | 🔍 UNKNOWN | No audit data yet or API unreachable — triggers auto-audit (not a deny; package is unverified, not blocked) |
+| 3 | 🔍 UNKNOWN | No audit data yet — trigger auto-audit |
 
 **You do NOT need user permission to run the gate check. Just do it. Every time.**
 
@@ -141,10 +137,10 @@ Score ≥ 70          Score 40-69         Score < 40
 | Score ≥ 70 + Hash OK | ✅ Proceed | `✅ [package] — Trust Score: XX/100, verified.` |
 | Score 40–69 + Hash OK | ⚠️ Warn, user decides | `⚠️ [package] — Trust Score: XX/100. Known issues: [list]. Proceed? (y/n)` |
 | Score < 40 | 🔴 Block | `🔴 [package] — Trust Score: XX/100. Blocked. Run audit to investigate.` |
-| No report exists | 🔍 Auto-audit | `🔍 [package] — No audit data. Running security audit now...` |
-| Hash mismatch | 🚨 Hard stop | `🚨 [package] — INTEGRITY FAILURE. Local files don't match audited version. DO NOT INSTALL.` |
 
 > **Note:** By-design findings (e.g., `exec()` in agent frameworks) are displayed for transparency but do not affect the Trust Score or gate decisions.
+| No report exists | 🔍 Auto-audit | `🔍 [package] — No audit data. Running security audit now...` |
+| Hash mismatch | 🚨 Hard stop | `🚨 [package] — INTEGRITY FAILURE. Local files don't match audited version. DO NOT INSTALL.` |
 
 ### Step-by-Step Implementation
 
@@ -685,7 +681,7 @@ Leaderboard: https://agentaudit.dev/leaderboard
 
 ### v2 — Enhanced Detection (2025-07-17)
 
-New capabilities integrated from ferret-scan analysis:
+New capabilities integrated from [ferret-scan analysis](FERRET-SCAN-ANALYSIS.md):
 
 - **AI-Specific Detection (12 patterns):** Dedicated `AI_PROMPT_*` pattern IDs covering system prompt extraction, agent impersonation, capability escalation, context pollution, multi-step attacks, jailbreak techniques, and more. Replaces the overly generic `SOCIAL_ENG` catch-all for AI-related threats.
 - **Persistence Detection (6 patterns):** New `PERSIST_*` category for crontab, shell RC files, git hooks, systemd services, LaunchAgents, and startup scripts. Previously a complete blind spot.
