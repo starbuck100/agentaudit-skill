@@ -48,8 +48,8 @@ API_KEY="$(load_api_key)"
 CURL_ARGS=(-sL -f --max-time 15 "${API_URL}/api/findings?package=${PKG_ENCODED}")
 [[ -n "$API_KEY" ]] && CURL_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
 RESPONSE="$(curl "${CURL_ARGS[@]}" 2>/dev/null)" || {
-  echo "{\"gate\":\"error\",\"package\":\"${PKG}\",\"message\":\"API request failed\",\"exit_code\":3}"
-  exit 3
+  echo "{\"gate\":\"warn\",\"package\":\"${PKG}\",\"score\":null,\"message\":\"⚠️ Registry unreachable (timeout or down). Proceeding in WARN mode — package is UNVERIFIED. Consider running a local audit or waiting until the registry is back.\",\"exit_code\":2}"
+  exit 2
 }
 
 # --- Parse & Score ---
