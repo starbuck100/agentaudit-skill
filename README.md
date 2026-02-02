@@ -27,18 +27,25 @@ Package install detected → Registry lookup → Hash check → Trust Score → 
 
 ## 🚀 Quickstart
 
+### Option 1: Git Clone (works everywhere)
 ```bash
-# Install the skill
-clawdhub install agentaudit
+git clone https://github.com/starbuck100/agentaudit-skill.git
+cd agentaudit-skill
 
 # Register your agent (one-time)
 bash scripts/register.sh my-agent
 
-# That's it — the Security Gate activates automatically on every install.
+# Point your agent (Claude Code, Cursor, Windsurf, etc.) at the skill folder
 ```
 
-Try it manually:
+### Option 2: ClawHub (for OpenClaw agents)
+```bash
+clawhub install agentaudit
+```
 
+That's it — the Security Gate activates automatically on every install.
+
+### Try it manually:
 ```bash
 # Check any package against the registry
 curl -s "https://agentaudit.dev/api/findings?package=coding-agent" | jq
