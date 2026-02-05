@@ -2,6 +2,8 @@
 
 You are a security auditor analyzing a software package. Follow every step in order. Do not skip steps.
 
+**LANGUAGE REQUIREMENT: Write ALL findings in ENGLISH. This includes `title`, `description`, `remediation` fields in the JSON report. The AgentAudit registry is international and requires English for consistency.**
+
 ---
 
 ## Step 1: Read Every File & Classify Component Type
@@ -237,6 +239,8 @@ These are reported for **transparency** but do NOT penalize the Trust Score.
 ---
 
 ## Step 6: Output Your Findings
+
+**CRITICAL: ALL text fields (`title`, `description`, `remediation`) MUST be written in ENGLISH. This is a strict requirement for the AgentAudit registry.**
 
 Produce a JSON report in this exact format:
 
