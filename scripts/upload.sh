@@ -116,6 +116,36 @@ if [ "$COMMIT_SHA" = "null" ] || [ "$CONTENT_HASH" = "null" ]; then
   fi
 fi
 
+# ══════════════════════════════════════════════════════════════════════════
+# PER-FILE HASHING: Calculate file_hash for each finding if missing
+# ══════════════════════════════════════════════════════════════════════════
+
+if command -v sha256sum &>/dev/null; then
+  # Count findings that need file_hash
+  FINDINGS_COUNT=$(echo "$REPORT_JSON" | jq '.findings | length' 2>/dev/null || echo "0")
+  
+  if [ "$FINDINGS_COUNT" -gt 0 ]; then
+    echo "🔍 Calculating per-file hashes..."
+    
+    # Process each finding
+    for i in $(seq 0 $((FINDINGS_COUNT - 1))); do
+      # Get file path and existing file_hash
+      FILE_PATH=$(echo "$REPORT_JSON" | jq -r ".findings[$i].file // .findings[$i].file_path // empty")
+      EXISTING_FILE_HASH=$(echo "$REPORT_JSON" | jq -r ".findings[$i].file_hash // \"null\"")
+      
+      # Only calculate if file exists and file_hash is missing
+      if [ -n "$FILE_PATH" ] && [ "$EXISTING_FILE_HASH" = "null" ] && [ -f "$PACKAGE_DIR/$FILE_PATH" ]; then
+        FILE_HASH=$(sha256sum "$PACKAGE_DIR/$FILE_PATH" 2>/dev/null | cut -d' ' -f1)
+        
+        if [ -n "$FILE_HASH" ]; then
+          REPORT_JSON=$(echo "$REPORT_JSON" | jq ".findings[$i].file_hash = \"$FILE_HASH\"")
+          echo "  ✓ $FILE_PATH: ${FILE_HASH:0:16}..."
+        fi
+      fi
+    done
+  fi
+fi
+
 # Inject version fields into report JSON
 if [ "$COMMIT_SHA" != "null" ] || [ "$CONTENT_HASH" != "null" ]; then
   REPORT_JSON=$(echo "$REPORT_JSON" | jq \

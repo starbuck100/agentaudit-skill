@@ -257,6 +257,7 @@ Produce a JSON report in this exact format:
       "title": "exec() in agent code runner",
       "description": "exec() is used in the code-runner module for executing LLM-generated code. This is a core feature of this agent framework (documented in README). Sandboxed via restricted globals.",
       "file": "src/runner.js",
+      "file_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "line": 42,
       "content": "exec(generatedCode, sandboxedGlobals)",
       "confidence": "high",
@@ -300,7 +301,36 @@ You MUST include these fields to track which version of the package was audited:
   find . -type f ! -path '*/\.git/*' -exec sha256sum {} + | sort | sha256sum | cut -d' ' -f1
   ```
 
-Add these as top-level fields in your JSON report:
+### Per-File Hashing (RECOMMENDED for precise staleness detection)
+
+For each finding, calculate a hash of the SPECIFIC file where the issue was found:
+
+- **`file_hash`** (recommended): SHA-256 hash of the individual file
+  ```bash
+  # For each finding:
+  sha256sum path/to/affected/file.js | cut -d' ' -f1
+  ```
+
+Add this to EACH finding object (not top-level):
+
+```json
+{
+  "file": "src/auth.ts",
+  "file_hash": "e3b0c442...",
+  "line": 42,
+  "content": "exec(userInput)"
+}
+```
+
+**Why file_hash matters:**
+- Package hash changes when ANY file changes (even README updates)
+- File hash only changes when THE SPECIFIC FILE changes
+- Enables precise detection: "Is THIS bug still in the code?"
+- Reduces false-positives in staleness checks
+
+**Note:** `upload.sh` will auto-calculate file_hash if you omit it, but providing it yourself ensures accuracy.
+
+Add package-level hashes as top-level fields in your JSON report:
 
 ```json
 {

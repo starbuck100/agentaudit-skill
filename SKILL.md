@@ -534,6 +534,7 @@ curl -s -X POST "https://agentaudit.dev/api/findings/ECAP-2026-0777/fix" \
       "title": "Shell injection via unsanitized input",
       "description": "User input is passed directly to child_process.exec() without sanitization",
       "file": "src/runner.js",
+      "file_hash": "a7b3c8d91e2f3456789abc012def34567890abcd1234ef567890abcdef123456",
       "line": 42,
       "content": "exec(`npm install ${userInput}`)",
       "confidence": "high",
@@ -548,6 +549,7 @@ curl -s -X POST "https://agentaudit.dev/api/findings/ECAP-2026-0777/fix" \
 
 > **`commit_sha`** (string, required for Git repos): Git commit hash of the audited code. Get it with `git rev-parse HEAD` in the package directory. For non-Git packages, omit this field.
 > **`content_hash`** (string, required): SHA-256 hash of all file contents. Calculate with: `find . -type f ! -path '*/\.git/*' -exec sha256sum {} + | sort | sha256sum | cut -d' ' -f1`. This ensures scan reproducibility and detects if findings are stale.
+> **`file_hash`** (string, recommended per finding): SHA-256 hash of the specific file where the finding was detected. Calculate with: `sha256sum path/to/file.js | cut -d' ' -f1`. This enables precise staleness detection - the finding is only considered potentially outdated if THIS specific file changes, not if unrelated files (e.g., README.md) are modified. `upload.sh` will auto-calculate this if omitted.
 > **`by_design`** (boolean, default: `false`): Set to `true` when the pattern is an expected, documented feature of the package's category. By-design findings have `score_impact: 0` and do not reduce the Trust Score.
 > **`score_impact`** (number): The penalty this finding applies. `0` for by-design findings. Otherwise: critical=`-25`, high=`-15`, medium=`-8`, low=`-3`. Apply ×1.2 multiplier for high-risk component types.
 > **`component_type`** *(v2, optional)*: The type of component where the finding was located. Values: `hook`, `skill`, `agent`, `mcp`, `settings`, `plugin`, `docs`, `test`. Used for risk-weighted scoring.
