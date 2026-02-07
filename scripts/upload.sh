@@ -174,7 +174,7 @@ if command -v sha256sum &>/dev/null; then
 
       # Sanitize file path: strip ../ sequences and leading / to prevent path traversal
       # Loop to catch nested bypass attempts like ....// → ../
-      local prev=""
+      prev=""
       while [ "$FILE_PATH" != "$prev" ]; do
         prev="$FILE_PATH"
         FILE_PATH=$(printf '%s' "$FILE_PATH" | sed 's|\.\./||g; s|^/||')
