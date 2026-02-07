@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/banner-chameleon.png" alt="AgentAudit — Security gate for AI agents" width="100%">
+<img src="https://www.agentaudit.dev/banner-chameleon.png" alt="AgentAudit — Security gate for AI agents" width="100%">
 
 <br>
 
