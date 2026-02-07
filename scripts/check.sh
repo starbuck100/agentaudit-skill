@@ -29,40 +29,57 @@ PKG_ENCODED="$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PKG',
 echo "🔍 Checking '$PKG' against ${API_URL}..."
 echo ""
 
-CURL_ARGS=(-sL -f --max-time 10 "${API_URL}/api/findings?package=${PKG_ENCODED}")
-[[ -n "$API_KEY" ]] && CURL_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
+# Fetch the trust score from /api/check (authoritative, accounts for by_design exclusions)
+CHECK_ARGS=(-sL -f --max-time 10 "${API_URL}/api/check?package=${PKG_ENCODED}")
+[[ -n "$API_KEY" ]] && CHECK_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
 
-RESPONSE="$(curl "${CURL_ARGS[@]}" 2>/dev/null)" || {
+CHECK_RESPONSE="$(curl "${CHECK_ARGS[@]}" 2>/dev/null)" || {
   echo "⚠️  Registry unreachable. Cannot verify package."
   echo "    Try again later or run a local LLM audit on the source."
   exit 2
 }
 
-TOTAL=$(echo "$RESPONSE" | jq '.total // 0')
-
-if [[ "$TOTAL" -eq 0 ]]; then
+# Check if the package has audit data
+EXISTS=$(echo "$CHECK_RESPONSE" | jq -r '.exists // false')
+if [[ "$EXISTS" != "true" ]]; then
   echo "📭 No audit data found for '$PKG'."
   echo "   This package has not been scanned yet."
   echo "   Consider submitting an audit: bash scripts/upload.sh <report.json>"
   exit 0
 fi
 
-# Calculate score
-SCORE=$(echo "$RESPONSE" | jq '
-  [.findings // [] | .[] | select(.by_design != true and .by_design != "true") |
-    (if .severity == "critical" then -25
-    elif .severity == "high" then -15
-    elif .severity == "medium" then -8
-    elif .severity == "low" then -3
-    else 0 end)
-  ] | 100 + add | round
-')
+# Use the authoritative trust_score from the API
+API_SCORE=$(echo "$CHECK_RESPONSE" | jq '.trust_score // empty')
 
-# Severity counts
-CRIT=$(echo "$RESPONSE" | jq '[.findings[]|select(.severity=="critical" and .by_design!=true)]|length')
-HIGH=$(echo "$RESPONSE" | jq '[.findings[]|select(.severity=="high" and .by_design!=true)]|length')
-MED=$(echo "$RESPONSE" | jq '[.findings[]|select(.severity=="medium" and .by_design!=true)]|length')
-LOW=$(echo "$RESPONSE" | jq '[.findings[]|select(.severity=="low" and .by_design!=true)]|length')
+# Fetch detailed findings for severity breakdown and top findings display
+FIND_ARGS=(-sL -f --max-time 10 "${API_URL}/api/findings?package=${PKG_ENCODED}")
+[[ -n "$API_KEY" ]] && FIND_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
+
+RESPONSE="$(curl "${FIND_ARGS[@]}" 2>/dev/null)" || RESPONSE='{"findings":[],"total":0}'
+
+# Use API trust_score; fall back to local calculation only if the API didn't return one.
+# NOTE: The local fallback may differ from the registry score because the registry
+# applies additional adjustments (e.g. by_design exclusion, score_impact weighting)
+# that are not fully replicated here.
+if [[ -n "$API_SCORE" ]]; then
+  SCORE="$API_SCORE"
+else
+  SCORE=$(echo "$RESPONSE" | jq '
+    [.findings // [] | .[] | select(.by_design != true and .by_design != "true") |
+      (if .severity == "critical" then -25
+      elif .severity == "high" then -15
+      elif .severity == "medium" then -8
+      elif .severity == "low" then -3
+      else 0 end)
+    ] | 100 + add | round
+  ')
+fi
+
+# Severity counts (from /api/check response if available, else from findings)
+CRIT=$(echo "$CHECK_RESPONSE" | jq '.critical // 0')
+HIGH=$(echo "$CHECK_RESPONSE" | jq '.high // 0')
+MED=$(echo "$CHECK_RESPONSE" | jq '.medium // 0')
+LOW=$(echo "$CHECK_RESPONSE" | jq '.low // 0')
 BYDESIGN=$(echo "$RESPONSE" | jq '[.findings[]|select(.by_design==true or .by_design=="true")]|length')
 
 # Decision
