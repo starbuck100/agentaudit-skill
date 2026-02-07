@@ -30,7 +30,7 @@ fi
 # --- URL-encode package name (handles @scoped/packages) ---
 url_encode() {
   local string="$1"
-  python3 -c "import urllib.parse; print(urllib.parse.quote('$string', safe=''))" 2>/dev/null \
+  printf '%s' "$string" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read(), safe=''))" 2>/dev/null \
     || printf '%s' "$string" | jq -sRr @uri 2>/dev/null \
     || printf '%s' "$string" | sed 's/@/%40/g; s/\//%2F/g; s/ /%20/g'
 }

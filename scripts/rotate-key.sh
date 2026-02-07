@@ -13,7 +13,7 @@ for cmd in curl jq; do
   fi
 done
 
-REGISTRY_URL="${AGENTAUDIT_REGISTRY_URL:-https://www.agentaudit.dev}"
+REGISTRY_URL="https://www.agentaudit.dev"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILL_CRED_FILE="$SCRIPT_DIR/../config/credentials.json"
 USER_CRED_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agentaudit"
@@ -66,7 +66,8 @@ if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
   if [ -n "${AGENTAUDIT_API_KEY:-}" ]; then
     echo ""
     echo "   ⚠️  You also have AGENTAUDIT_API_KEY set in your environment."
-    echo "      Update it to: export AGENTAUDIT_API_KEY=\"$NEW_KEY\""
+    echo "      Update it from the saved credentials:"
+    echo "      export AGENTAUDIT_API_KEY=\"\$(jq -r .api_key $USER_CRED_FILE)\""
   fi
 else
   echo "❌ Key rotation failed (HTTP $HTTP_CODE):" >&2

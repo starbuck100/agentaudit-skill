@@ -4,7 +4,7 @@
 # Returns trust score and findings without installing anything.
 set -euo pipefail
 
-API_URL="${AGENTAUDIT_REGISTRY_URL:-https://www.agentaudit.dev}"
+API_URL="https://www.agentaudit.dev"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 for cmd in jq curl; do
@@ -22,7 +22,7 @@ source "$SCRIPT_DIR/_load-key.sh"
 API_KEY="$(load_api_key)"
 
 PKG="$1"
-PKG_ENCODED="$(python3 -c "import urllib.parse; print(urllib.parse.quote('$PKG', safe=''))" 2>/dev/null \
+PKG_ENCODED="$(printf '%s' "$PKG" | python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.stdin.read(), safe=''))" 2>/dev/null \
   || printf '%s' "$PKG" | jq -sRr @uri 2>/dev/null \
   || echo "$PKG")"
 

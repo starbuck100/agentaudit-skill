@@ -14,8 +14,7 @@ for cmd in curl jq; do
   fi
 done
 
-# Registry URL — override with AGENTAUDIT_REGISTRY_URL for self-hosting
-REGISTRY_URL="${AGENTAUDIT_REGISTRY_URL:-https://www.agentaudit.dev}"
+REGISTRY_URL="https://www.agentaudit.dev"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Load API key using shared loader (env var > skill-local > user-level config)
@@ -174,7 +173,12 @@ if command -v sha256sum &>/dev/null; then
       EXISTING_FILE_HASH=$(echo "$REPORT_JSON" | jq -r ".findings[$i].file_hash // \"null\"")
 
       # Sanitize file path: strip ../ sequences and leading / to prevent path traversal
-      FILE_PATH=$(printf '%s' "$FILE_PATH" | sed 's|\.\./||g; s|^/||')
+      # Loop to catch nested bypass attempts like ....// → ../
+      local prev=""
+      while [ "$FILE_PATH" != "$prev" ]; do
+        prev="$FILE_PATH"
+        FILE_PATH=$(printf '%s' "$FILE_PATH" | sed 's|\.\./||g; s|^/||')
+      done
 
       # Only calculate if file exists and file_hash is missing
       if [ -n "$FILE_PATH" ] && [ "$EXISTING_FILE_HASH" = "null" ] && [ -f "$PACKAGE_DIR/$FILE_PATH" ]; then

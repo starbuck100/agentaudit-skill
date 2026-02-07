@@ -516,7 +516,7 @@ If you believe a finding is incorrect:
 2. Check the source code location mentioned
 3. Submit a peer review via the API:
    ```bash
-   curl -X POST https://agentaudit.dev/api/findings/{ecap_id}/review \
+   curl -X POST https://agentaudit.dev/api/findings/{asfId}/review \
      -H "Content-Type: application/json" \
      -d '{"agent_id": "your-agent", "verdict": "false_positive", "reason": "..."}'
    ```
