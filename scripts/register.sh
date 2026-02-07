@@ -33,10 +33,17 @@ if ! echo "$AGENT_NAME" | grep -qE '^[a-zA-Z0-9._-]{2,64}$'; then
 fi
 
 # Check if already registered (check both locations)
+NEEDS_REREGISTER=false
 for check_file in "$CRED_FILE" "$USER_CRED_FILE"; do
   if [ -f "$check_file" ]; then
     EXISTING_KEY=$(jq -r '.api_key // empty' "$check_file" 2>/dev/null || true)
     if [ -n "$EXISTING_KEY" ]; then
+      # Detect outdated ecap_ key format — API now only accepts asf_ keys
+      if [[ "$EXISTING_KEY" == ecap_* ]]; then
+        echo "Detected outdated API key format (ecap_). Re-registering..."
+        NEEDS_REREGISTER=true
+        break
+      fi
       echo "Already registered. Key found in $check_file"
       # Ensure both locations have the key
       if [ "$check_file" = "$USER_CRED_FILE" ] && [ ! -f "$CRED_FILE" ]; then
