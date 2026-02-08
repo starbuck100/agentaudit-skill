@@ -42,18 +42,17 @@ source "$GATE_SCRIPT_DIR/_load-key.sh"
 source "$GATE_SCRIPT_DIR/_curl-retry.sh"
 API_KEY="$(load_api_key)"
 
-# --- Query API (with retry for transient failures) ---
-CURL_ARGS=(-sL -f --max-time 15 "${API_URL}/api/findings?package=${PKG_ENCODED}")
-[[ -n "$API_KEY" ]] && CURL_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
-RESPONSE="$(curl_retry "${CURL_ARGS[@]}")" || {
+# --- Query /api/check (authoritative trust score, handles 0-finding packages) ---
+CHECK_ARGS=(-sL -f --max-time 15 "${API_URL}/api/check?package=${PKG_ENCODED}")
+[[ -n "$API_KEY" ]] && CHECK_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
+CHECK_RESPONSE="$(curl_retry "${CHECK_ARGS[@]}")" || {
   echo "{\"gate\":\"warn\",\"package\":\"${PKG}\",\"score\":null,\"message\":\"⚠️ Registry unreachable (timeout or down). Proceeding in WARN mode — package is UNVERIFIED. Consider running a local audit or waiting until the registry is back.\",\"exit_code\":2}"
   exit 2
 }
 
-# --- Parse & Score ---
-TOTAL=$(echo "$RESPONSE" | jq '.total // 0')
-if [[ "$TOTAL" -eq 0 ]]; then
-  # UNKNOWN = No audit data yet. Opportunity to contribute!
+# --- Check if package has been audited ---
+EXISTS=$(echo "$CHECK_RESPONSE" | jq -r '.exists // false')
+if [[ "$EXISTS" != "true" ]]; then
   cat <<EOF
 {
   "gate": "unknown",
@@ -86,25 +85,17 @@ EOF
   exit 3
 fi
 
-SCORE=$(echo "$RESPONSE" | jq '
-  [.findings // [] | .[] | select(.by_design != true and .by_design != "true") |
-    .component_type as $ct |
-    (if .severity == "critical" then -25
-    elif .severity == "high" then -15
-    elif .severity == "medium" then -8
-    elif .severity == "low" then -3
-    else 0 end) |
-    if $ct == "hook" or $ct == "mcp" or $ct == "settings" or $ct == "plugin" then . * 12 / 10
-    else . end
-  ] | [100 + add, 0] | max | [., 100] | min | round
-')
+# --- Use authoritative trust_score from /api/check ---
+SCORE=$(echo "$CHECK_RESPONSE" | jq '.trust_score // 100')
+TOTAL=$(echo "$CHECK_RESPONSE" | jq '.total_findings // 0')
 
-FINDINGS_SUMMARY=$(echo "$RESPONSE" | jq -c '{
-  critical: [.findings[]|select(.severity=="critical" and .by_design!=true and .by_design!="true")]|length,
-  high:     [.findings[]|select(.severity=="high" and .by_design!=true and .by_design!="true")]|length,
-  medium:   [.findings[]|select(.severity=="medium" and .by_design!=true and .by_design!="true")]|length,
-  low:      [.findings[]|select(.severity=="low" and .by_design!=true and .by_design!="true")]|length,
-  by_design:[.findings[]|select(.by_design==true or .by_design=="true")]|length
+# Build findings summary from /api/check response
+FINDINGS_SUMMARY=$(echo "$CHECK_RESPONSE" | jq -c '{
+  critical: (.critical // 0),
+  high:     (.high // 0),
+  medium:   (.medium // 0),
+  low:      (.low // 0),
+  by_design:(.by_design_count // 0)
 }')
 
 # --- Decision ---
@@ -121,8 +112,13 @@ if [[ "$SCORE" -ge 70 ]]; then
   exit 0
 elif [[ "$SCORE" -ge 40 ]]; then
   build_output "warning" "Score ${SCORE}/100 — review findings before installing" 2
-  # Show top findings for agent
-  echo "$RESPONSE" | jq -c '[.findings[]|select(.by_design!=true and .by_design!="true")|{severity,title,by_design}][:5]' >&2
+  # Fetch detailed findings for top findings display
+  FIND_ARGS=(-sL -f --max-time 10 "${API_URL}/api/findings?package=${PKG_ENCODED}")
+  [[ -n "$API_KEY" ]] && FIND_ARGS+=(-H "Authorization: Bearer ${API_KEY}")
+  FIND_RESPONSE="$(curl_retry "${FIND_ARGS[@]}" 2>/dev/null)" || true
+  if [[ -n "$FIND_RESPONSE" ]]; then
+    echo "$FIND_RESPONSE" | jq -c '[.findings[]|select(.by_design!=true and .by_design!="true")|{severity,title,by_design}][:5]' >&2
+  fi
   exit 2
 else
   build_output "block" "Score ${SCORE}/100 — too risky, installation blocked" 1
