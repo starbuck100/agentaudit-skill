@@ -136,108 +136,24 @@ if [ -z "$HAS_SLUG" ]; then
 fi
 
 # ══════════════════════════════════════════════════════════════════════════
-# VERSION TRACKING (OPTIONAL): Auto-calculate commit_sha and content_hash
-# Backend enrichment handles these if you don't provide them.
-# This script calculates them locally for faster processing.
+# VERSION TRACKING: commit_sha and content_hash
+# ══════════════════════════════════════════════════════════════════════════
+# These fields are calculated by the BACKEND ENRICHMENT from the source_url.
+# Do NOT auto-calculate locally — the agent's CWD is its workspace, not the
+# audited package directory. Local calculation produces WRONG values:
+#   - commit_sha would be the workspace repo HEAD (not the package's commit)
+#   - content_hash would hash the workspace files (not the package files)
+# If the agent explicitly provides these fields in the report JSON, we pass
+# them through. Otherwise, backend enrichment handles it correctly.
 # ══════════════════════════════════════════════════════════════════════════
 
-# Check if report already has version fields
-EXISTING_COMMIT=$(echo "$REPORT_JSON" | jq -r '.commit_sha // "null"')
-EXISTING_CONTENT=$(echo "$REPORT_JSON" | jq -r '.content_hash // "null"')
+EXISTING_COMMIT=$(echo "$REPORT_JSON" | jq -r '.commit_sha // empty')
+EXISTING_CONTENT=$(echo "$REPORT_JSON" | jq -r '.content_hash // empty')
 
-if [ "$EXISTING_COMMIT" != "null" ] || [ "$EXISTING_CONTENT" != "null" ]; then
-  echo "ℹ️  Report already contains version info - skipping auto-calculation"
+if [ -n "$EXISTING_COMMIT" ] || [ -n "$EXISTING_CONTENT" ]; then
+  echo "ℹ️  Report contains version info (commit_sha/content_hash) — passing through"
 else
-  echo "🔍 Calculating version hashes..."
-fi
-
-COMMIT_SHA="${EXISTING_COMMIT}"
-CONTENT_HASH="${EXISTING_CONTENT}"
-
-# Only calculate if fields are missing
-if [ "$COMMIT_SHA" = "null" ] || [ "$CONTENT_HASH" = "null" ]; then
-  # Try to detect the package directory
-  # 1. Check if we're in a package directory (has package.json, setup.py, or SKILL.md)
-  # 2. Otherwise use current directory
-  PACKAGE_DIR="$PWD"
-
-  # Calculate commit_sha (only for Git repos and if not already set)
-  if [ "$COMMIT_SHA" = "null" ] && git rev-parse --git-dir > /dev/null 2>&1; then
-    COMMIT_SHA=$(git rev-parse HEAD 2>/dev/null || echo "null")
-    if [ "$COMMIT_SHA" != "null" ]; then
-      echo "  ✓ commit_sha: ${COMMIT_SHA:0:8}..."
-    fi
-  fi
-
-  # Calculate content_hash (SHA-256 of all files, if not already set)
-  if [ "$CONTENT_HASH" = "null" ] && command -v sha256sum &>/dev/null; then
-    CONTENT_HASH=$(find "$PACKAGE_DIR" -type f \
-      ! -path '*/.git/*' \
-      ! -path '*/node_modules/*' \
-      ! -path '*/venv/*' \
-      ! -path '*/.venv/*' \
-      ! -path '*/__pycache__/*' \
-      ! -path '*/dist/*' \
-      ! -path '*/build/*' \
-      -exec sha256sum {} + 2>/dev/null | \
-      sort | \
-      sha256sum | \
-      cut -d' ' -f1)
-    
-    if [ -n "$CONTENT_HASH" ] && [ "$CONTENT_HASH" != "" ]; then
-      echo "  ✓ content_hash: ${CONTENT_HASH:0:16}..."
-    else
-      CONTENT_HASH="null"
-    fi
-  elif [ "$CONTENT_HASH" = "null" ]; then
-    echo "  ⚠ sha256sum not found - skipping content_hash" >&2
-  fi
-fi
-
-# ══════════════════════════════════════════════════════════════════════════
-# PER-FILE HASHING: Calculate file_hash for each finding if missing
-# ══════════════════════════════════════════════════════════════════════════
-
-if command -v sha256sum &>/dev/null; then
-  # Count findings that need file_hash
-  FINDINGS_COUNT=$(echo "$REPORT_JSON" | jq '.findings | length' 2>/dev/null || echo "0")
-  
-  if [ "$FINDINGS_COUNT" -gt 0 ]; then
-    echo "🔍 Calculating per-file hashes..."
-    
-    # Process each finding
-    for i in $(seq 0 $((FINDINGS_COUNT - 1))); do
-      # Get file path and existing file_hash
-      FILE_PATH=$(echo "$REPORT_JSON" | jq -r ".findings[$i].file // .findings[$i].file_path // empty")
-      EXISTING_FILE_HASH=$(echo "$REPORT_JSON" | jq -r ".findings[$i].file_hash // \"null\"")
-
-      # Sanitize file path: strip ../ sequences and leading / to prevent path traversal
-      # Loop to catch nested bypass attempts like ....// → ../
-      prev=""
-      while [ "$FILE_PATH" != "$prev" ]; do
-        prev="$FILE_PATH"
-        FILE_PATH=$(printf '%s' "$FILE_PATH" | sed 's|\.\./||g; s|^/||')
-      done
-
-      # Only calculate if file exists and file_hash is missing
-      if [ -n "$FILE_PATH" ] && [ "$EXISTING_FILE_HASH" = "null" ] && [ -f "$PACKAGE_DIR/$FILE_PATH" ]; then
-        FILE_HASH=$(sha256sum "$PACKAGE_DIR/$FILE_PATH" 2>/dev/null | cut -d' ' -f1)
-        
-        if [ -n "$FILE_HASH" ]; then
-          REPORT_JSON=$(echo "$REPORT_JSON" | jq ".findings[$i].file_hash = \"$FILE_HASH\"")
-          echo "  ✓ $FILE_PATH: ${FILE_HASH:0:16}..."
-        fi
-      fi
-    done
-  fi
-fi
-
-# Inject version fields into report JSON
-if [ "$COMMIT_SHA" != "null" ] || [ "$CONTENT_HASH" != "null" ]; then
-  REPORT_JSON=$(echo "$REPORT_JSON" | jq \
-    --arg commit "$COMMIT_SHA" \
-    --arg content "$CONTENT_HASH" \
-    '. + {commit_sha: (if $commit == "null" then null else $commit end), content_hash: (if $content == "null" then null else $content end)}')
+  echo "ℹ️  Version info (commit_sha, content_hash) will be computed by backend enrichment"
 fi
 
 echo "Uploading report to $REGISTRY_URL/api/reports ..."
