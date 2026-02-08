@@ -96,7 +96,7 @@ SCORE=$(echo "$RESPONSE" | jq '
     else 0 end) |
     if $ct == "hook" or $ct == "mcp" or $ct == "settings" or $ct == "plugin" then . * 12 / 10
     else . end
-  ] | 100 + add | round
+  ] | [100 + add, 0] | max | [., 100] | min | round
 ')
 
 FINDINGS_SUMMARY=$(echo "$RESPONSE" | jq -c '{

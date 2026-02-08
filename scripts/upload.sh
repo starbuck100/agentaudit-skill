@@ -225,10 +225,10 @@ fi
 if [ "$HTTP_CODE" = "429" ]; then
   echo "⚠️  Rate limited (429). Waiting 30s and retrying..." >&2
   sleep 30
-  RESPONSE=$(echo "$REPORT_JSON" | curl -s --max-time 60 -w "\n%{http_code}" -X POST "$REGISTRY_URL/api/reports" \
+  RESPONSE=$(echo "$REPORT_JSON" | curl_retry -s --max-time 60 -w "\n%{http_code}" -X POST "$REGISTRY_URL/api/reports" \
     -H "Authorization: Bearer $API_KEY" \
     -H "Content-Type: application/json" \
-    -d @- 2>/dev/null) || true
+    -d @-) || true
   HTTP_CODE=$(echo "$RESPONSE" | tail -1)
   BODY=$(echo "$RESPONSE" | sed '$d')
 fi

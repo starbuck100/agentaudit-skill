@@ -19,8 +19,9 @@ SKILL_CRED_FILE="$SCRIPT_DIR/../config/credentials.json"
 USER_CRED_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/agentaudit"
 USER_CRED_FILE="$USER_CRED_DIR/credentials.json"
 
-# ── Load existing API key ──
+# ── Load shared helpers ──
 source "$SCRIPT_DIR/_load-key.sh"
+source "$SCRIPT_DIR/_curl-retry.sh"
 API_KEY="$(load_api_key)"
 
 if [ -z "$API_KEY" ]; then
@@ -30,7 +31,7 @@ fi
 
 echo "🔄 Rotating API key..."
 
-RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$REGISTRY_URL/api/keys/rotate" \
+RESPONSE=$(curl_retry -s -w "\n%{http_code}" -X POST "$REGISTRY_URL/api/keys/rotate" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $API_KEY")
 
