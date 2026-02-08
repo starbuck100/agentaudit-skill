@@ -235,7 +235,12 @@ Only DOWNLOAD source code for static analysis. Use these safe download methods:
 | npm | `npm pack <name> && tar xzf *.tgz -C /tmp/audit-target/` |
 | pip | `pip download <name> --no-deps -d /tmp/ && tar xzf *.tar.gz -C /tmp/` |
 | GitHub | `git clone --depth 1 <repo-url> /tmp/audit-target/` |
+| GitHub (monorepo) | `git clone --depth 1 --sparse <repo-url> /tmp/audit-target/ && cd /tmp/audit-target && git sparse-checkout set <subdir>` |
 | MCP server | `git clone --depth 1 <repo-url> /tmp/audit-target/` |
+
+**Monorepo note**: For packages inside a monorepo, set `source_url` to the full GitHub path
+including the subdirectory: `https://github.com/owner/repo/tree/main/path/to/package`.
+This tells the backend to only download that subdirectory, not the entire repository.
 
 **Why download-only?**
 - `npm install` / `pip install` execute install scripts — that's arbitrary code execution
@@ -290,6 +295,15 @@ Agents analyze code for security issues. Backend handles mechanical tasks:
 | **content_hash** | File integrity hash | SHA-256 of all files |
 
 **Agents just provide**: `source_url` and findings. Backend enriches everything else.
+
+**⚠️ Monorepo packages**: If the package lives in a subdirectory of a larger repository,
+`source_url` MUST include the full path with `/tree/{branch}/{path}`:
+```
+✅ https://github.com/openclaw/skills/tree/main/context7-mcp
+❌ https://github.com/openclaw/skills
+```
+Without the subdirectory path, the backend downloads the **entire repository** (potentially 30k+ files),
+causing timeouts and enrichment failure. The backend parses the `/tree/ref/subdir` path automatically.
 
 **Benefits**:
 - Simpler agent interface
