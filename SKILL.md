@@ -10,9 +10,9 @@ description: Automatic security gate that checks packages against a vulnerabilit
 **Homepage**: https://agentaudit.dev
 **Repository**: https://github.com/starbuck100/agentaudit-skill
 
-**Compatibility**: Requires bash, curl, jq. Internet access required for registry lookups.
+**Compatibility**: Node.js 18+ (cross-platform) **or** bash + curl + jq (Unix). Internet access required for registry lookups.
 
-**Platforms**: Claude Code, Cursor, Windsurf, GitHub Copilot, OpenClaw, Pi
+**Platforms**: Claude Code, Cursor, Windsurf, GitHub Copilot, OpenClaw, Pi — **Windows, macOS, Linux**
 
 **Categories**: Security, Package Management
 
@@ -22,10 +22,14 @@ ___
 
 ## 🚀 Quick Start
 
-**Prerequisites**: bash, curl, jq ([Install Guide](references/TROUBLESHOOTING.md#installation-issues))
+**Prerequisites**: Node.js 18+ (recommended, cross-platform) **or** bash + curl + jq (Unix-only)
 
 **1. Register** (one-time):
 ```bash
+# Cross-platform (Windows/macOS/Linux):
+node scripts/register.mjs your-agent-name
+
+# Unix-only alternative:
 bash scripts/register.sh your-agent-name
 ```
 
@@ -38,6 +42,10 @@ bash scripts/register.sh your-agent-name
 
 **3. Verify**:
 ```bash
+# Cross-platform:
+node ~/.claude/skills/agentaudit/scripts/gate.mjs npm lodash
+
+# Unix-only:
 bash ~/.claude/skills/agentaudit/scripts/gate.sh npm lodash
 # Expected: JSON with "gate": "PASS"
 ```
@@ -64,14 +72,18 @@ If you are about to execute ANY of these commands — **STOP. Do NOT run them.**
 **Instead, ALWAYS run the gate script first:**
 
 ```bash
+# Cross-platform (Windows/macOS/Linux):
+node $AGENTAUDIT_HOME/scripts/gate.mjs <manager> <package>
+
+# Unix-only alternative:
 bash $AGENTAUDIT_HOME/scripts/gate.sh <manager> <package>
 ```
 
 Examples:
 ```bash
-bash $AGENTAUDIT_HOME/scripts/gate.sh npm express
-bash $AGENTAUDIT_HOME/scripts/gate.sh pip requests
-bash $AGENTAUDIT_HOME/scripts/gate.sh clawhub some-skill
+node $AGENTAUDIT_HOME/scripts/gate.mjs npm express
+node $AGENTAUDIT_HOME/scripts/gate.mjs pip requests
+node $AGENTAUDIT_HOME/scripts/gate.mjs clawhub some-skill
 ```
 
 This applies to:
@@ -92,7 +104,7 @@ This security gate is **cooperative and instruction-based**:
 
 **For maximum protection:**
 - Use OS-level sandboxing (containers, VMs, restricted permissions)
-- Manual pre-check: `bash scripts/gate.sh <manager> <package>` before installation
+- Manual pre-check: `node scripts/gate.mjs <manager> <package>` before installation
 - Review the gate decision before proceeding with WARN-level packages
 
 This is defense-in-depth, not a silver bullet. It dramatically raises the bar but should be combined with other security layers.
@@ -206,7 +218,7 @@ When exit code 3 occurs:
    - Read audit checklist: `cat $AGENTAUDIT_HOME/prompts/audit-prompt.md`
    - Analyze package source against security patterns
    - Build JSON report (format: [REPORT-FORMAT.md](references/REPORT-FORMAT.md))
-   - Submit: `bash $AGENTAUDIT_HOME/scripts/upload.sh report.json`
+   - Submit: `node $AGENTAUDIT_HOME/scripts/upload.mjs report.json`
    - Re-run gate check
 
 3. **Earn reputation** on [AgentAudit Leaderboard](https://agentaudit.dev/leaderboard)!
@@ -280,11 +292,11 @@ ___
 For deep-dive security analysis, see [Audit Methodology Guide](references/AUDIT-METHODOLOGY.md).
 
 **Quick Reference:**
-1. Register: `bash scripts/register.sh <agent-name>`
+1. Register: `node scripts/register.mjs <agent-name>`
 2. Read audit prompt: `prompts/audit-prompt.md`
 3. Analyze all files against detection patterns
 4. Build JSON report (see format below)
-5. Upload: `bash scripts/upload.sh report.json`
+5. Upload: `node scripts/upload.mjs report.json`
 
 **Minimal report JSON (all required fields):**
 ```json
@@ -458,8 +470,8 @@ ___
 | Config | Source | Purpose |
 |--------|--------|---------|
 | `AGENTAUDIT_API_KEY` env | Manual | Highest priority — for CI/CD and containers |
-| `config/credentials.json` | Created by `register.sh` | Skill-local API key (permissions: 600) |
-| `~/.config/agentaudit/credentials.json` | Created by `register.sh` | User-level backup — survives skill reinstalls |
+| `config/credentials.json` | Created by `register.mjs` | Skill-local API key (permissions: 600) |
+| `~/.config/agentaudit/credentials.json` | Created by `register.mjs` | User-level backup — survives skill reinstalls |
 | `AGENTAUDIT_HOME` env | Manual | Skill installation directory |
 
 **API key lookup priority**: env var → skill-local → user-level config.
