@@ -422,7 +422,7 @@ Common scenarios handled automatically:
 
 | Situation | Behavior |
 |-----------|----------|
-| API down | **Default-deny**. Warn user. |
+| API down | **Default-warn** (exit 2). Agent pauses, shows warning, user decides. Package is NOT auto-installed. |
 | Hash mismatch | **Hard stop**. Check version. |
 | Rate limited (429) | Wait 2min, retry. |
 | No internet | Warn user, let them decide. |
