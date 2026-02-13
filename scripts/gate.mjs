@@ -108,12 +108,14 @@ if (!checkData.exists) {
 
 const score = checkData.trust_score ?? 100;
 const total = checkData.total_findings ?? 0;
+const auditLevel = checkData.audit_level || 'unknown';
 const summary = {
   critical: checkData.critical ?? 0,
   high: checkData.high ?? 0,
   medium: checkData.medium ?? 0,
   low: checkData.low ?? 0,
   total_findings: total,
+  audit_level: auditLevel,
 };
 
 // ── Decision ─────────────────────────────────────────────

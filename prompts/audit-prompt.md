@@ -27,10 +27,30 @@ PACKAGE PROFILE:
 - Name: <package name>
 - Purpose: <one sentence describing what this package does>
 - Category: <one of the categories below>
+- Package Type: <one of: mcp-server, agent-skill, library, cli-tool, npm-package, pip-package>
 - Expected Behaviors: <5-10 things this package SHOULD do given its purpose>
 - Abnormal for Category: <5-10 things that would be suspicious for this category>
 - Trust Boundaries: <where does external input enter? LLM tool args, HTTP requests, CLI args, file uploads, stdin, none>
 ```
+
+### Package Type Detection
+
+Determine the `package_type` using these signals (check in order, first match wins):
+
+| Signal | Package Type |
+|--------|-------------|
+| Has `SKILL.md` as primary file | `agent-skill` |
+| Only `.md` + `_meta.json`/`origin.json` files (no code) | `agent-skill` |
+| `package.json` depends on `@modelcontextprotocol/sdk` | `mcp-server` |
+| `pyproject.toml`/`setup.py` depends on `mcp` | `mcp-server` |
+| Implements JSON-RPC handlers or MCP `tools/list` | `mcp-server` |
+| "mcp" in package name AND has server/transport code | `mcp-server` |
+| Has `bin` field in `package.json` (standalone CLI) | `cli-tool` |
+| Is a reusable SDK/framework (no server, no CLI entry) | `library` |
+| Source URL contains `npmjs.com` | `npm-package` |
+| Source URL contains `pypi.org` | `pip-package` |
+
+**Include `package_type` in your JSON report** as a top-level field (see Report Format).
 
 ### Package Categories
 
@@ -380,6 +400,12 @@ If **any** fails → real vulnerability (`by_design: false`).
 ### Anti-gaming: Max 5 by-design findings per audit.
 
 **Documented limitation pattern:** If a package explicitly acknowledges a security limitation in docs AND exists specifically to provide that functionality → `by_design: true`.
+
+### Additional by-design clarifications:
+
+- **Placeholder/example credentials** (e.g. `.env.example`, `.secrets` with dummy values, `YOUR_API_KEY_HERE`): These are NOT real credential leaks. If values are obviously placeholders or templates → `by_design: true` or NOT a finding.
+- **Development-mode fallbacks** (e.g. fallback JWT secret when env var is not set, localhost-only defaults): Standard in web frameworks. If the fallback only activates in development/missing-config scenarios and production requires explicit configuration → `by_design: true`.
+- **Transparent monetization** (e.g. referral fees, affiliate links, commission systems): If the package EXPLICITLY documents its monetization model in README/SKILL.md and the user can see it before using → `by_design: true`. The finding is still valuable as information but should not count against trust score. Note: UNDISCLOSED affiliate links (hidden in URLs without documentation) are NOT by_design.
 
 ## 3.10 Final Triage
 

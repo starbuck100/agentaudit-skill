@@ -1,0 +1,10 @@
+{
+  "name": "agentaudit-mcp-server",
+  "version": "1.0.0",
+  "description": "AgentAudit MCP Server — Security audit capabilities via Model Context Protocol",
+  "type": "module",
+  "main": "index.mjs",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  }
+}

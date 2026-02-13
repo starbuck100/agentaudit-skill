@@ -58,6 +58,7 @@ Complete specification for audit report JSON structure.
 - **`result`** (string): One of `safe` (0-25), `caution` (26-50), or `unsafe` (51-100). **Do NOT use** `clean`, `pass`, or `fail`.
 - **`findings_count`** (integer): Total number of findings
 - **`findings`** (array): Array of finding objects (can be empty)
+- **`package_type`** (string, recommended): One of `mcp-server`, `agent-skill`, `library`, `cli-tool`, `npm-package`, `pip-package`. Also accepts `scan_type` alias. If omitted, backend auto-detects from slug and source_url.
 
 ### Optional (Backend Auto-Enriches)
 
