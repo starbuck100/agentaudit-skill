@@ -3,18 +3,20 @@
  * AgentAudit CLI — Beautiful terminal output for security audits
  * 
  * Usage:
- *   agentaudit scan <repo-url> [repo-url...]
- *   agentaudit scan --config <mcp-config.json>
- *   agentaudit check <package-name>
+ *   agentaudit setup                              Interactive setup (register + API key)
+ *   agentaudit scan <repo-url> [repo-url...]       Scan repositories
+ *   agentaudit check <package-name>                Look up in registry
  * 
  * Examples:
+ *   agentaudit setup
  *   agentaudit scan https://github.com/owner/repo
  *   agentaudit scan repo1 repo2 repo3
  */
 
 import fs from 'fs';
 import path from 'path';
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
+import { createInterface } from 'readline';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -51,6 +53,115 @@ const icons = {
   pipe: `${c.gray}│${c.reset}`,
   bullet: `${c.gray}•${c.reset}`,
 };
+
+// ── Credentials ─────────────────────────────────────────
+
+const home = process.env.HOME || process.env.USERPROFILE || '';
+const xdgConfig = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+const USER_CRED_DIR = path.join(xdgConfig, 'agentaudit');
+const USER_CRED_FILE = path.join(USER_CRED_DIR, 'credentials.json');
+const SKILL_CRED_FILE = path.join(SKILL_DIR, 'config', 'credentials.json');
+
+function loadCredentials() {
+  for (const f of [SKILL_CRED_FILE, USER_CRED_FILE]) {
+    if (fs.existsSync(f)) {
+      try {
+        const data = JSON.parse(fs.readFileSync(f, 'utf8'));
+        if (data.api_key) return data;
+      } catch {}
+    }
+  }
+  if (process.env.AGENTAUDIT_API_KEY) {
+    return { api_key: process.env.AGENTAUDIT_API_KEY, agent_name: 'env' };
+  }
+  return null;
+}
+
+function saveCredentials(data) {
+  const json = JSON.stringify(data, null, 2);
+  fs.mkdirSync(USER_CRED_DIR, { recursive: true });
+  fs.writeFileSync(USER_CRED_FILE, json, { mode: 0o600 });
+  try {
+    fs.mkdirSync(path.dirname(SKILL_CRED_FILE), { recursive: true });
+    fs.writeFileSync(SKILL_CRED_FILE, json, { mode: 0o600 });
+  } catch {}
+}
+
+function askQuestion(question) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  return new Promise(resolve => rl.question(question, answer => { rl.close(); resolve(answer.trim()); }));
+}
+
+async function registerAgent(agentName) {
+  const res = await fetch(`${REGISTRY_URL}/api/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agent_name: agentName }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Registration failed (HTTP ${res.status}): ${await res.text()}`);
+  return res.json();
+}
+
+async function setupCommand() {
+  console.log(`  ${c.bold}Setup${c.reset}`);
+  console.log();
+
+  const existing = loadCredentials();
+  if (existing) {
+    console.log(`  ${icons.safe}  Already configured as ${c.bold}${existing.agent_name}${c.reset}`);
+    console.log(`  ${c.dim}Key: ${existing.api_key.slice(0, 8)}...${c.reset}`);
+    console.log();
+    const answer = await askQuestion(`  Reconfigure? ${c.dim}(y/N)${c.reset} `);
+    if (answer.toLowerCase() !== 'y') {
+      console.log(`  ${c.dim}Keeping existing config.${c.reset}`);
+      return;
+    }
+    console.log();
+  }
+
+  console.log(`  ${c.bold}1)${c.reset} Register new agent ${c.dim}(free, creates API key automatically)${c.reset}`);
+  console.log(`  ${c.bold}2)${c.reset} Enter existing API key`);
+  console.log();
+  const choice = await askQuestion(`  Choice ${c.dim}(1/2)${c.reset}: `);
+  console.log();
+
+  if (choice === '2') {
+    const key = await askQuestion(`  API Key: `);
+    if (!key) { console.log(`  ${c.red}No key entered.${c.reset}`); return; }
+    const name = await askQuestion(`  Agent name ${c.dim}(optional)${c.reset}: `);
+    saveCredentials({ api_key: key, agent_name: name || 'custom' });
+    console.log();
+    console.log(`  ${icons.safe}  Saved! Key stored in ${c.dim}${USER_CRED_FILE}${c.reset}`);
+  } else {
+    const name = await askQuestion(`  Agent name ${c.dim}(e.g. my-scanner, claude-desktop)${c.reset}: `);
+    if (!name || !/^[a-zA-Z0-9._-]{2,64}$/.test(name)) {
+      console.log(`  ${c.red}Invalid name. Use 2-64 chars: letters, numbers, dash, underscore, dot.${c.reset}`);
+      return;
+    }
+    process.stdout.write(`  Registering ${c.bold}${name}${c.reset}...`);
+    try {
+      const data = await registerAgent(name);
+      saveCredentials({ api_key: data.api_key, agent_name: data.agent_name });
+      console.log(` ${c.green}done!${c.reset}`);
+      console.log();
+      console.log(`  ${icons.safe}  Registered as ${c.bold}${data.agent_name}${c.reset}`);
+      console.log(`  ${c.dim}Key: ${data.api_key.slice(0, 12)}...${c.reset}`);
+      console.log(`  ${c.dim}Saved to: ${USER_CRED_FILE}${c.reset}`);
+    } catch (err) {
+      console.log(` ${c.red}failed${c.reset}`);
+      console.log(`  ${c.red}${err.message}${c.reset}`);
+      return;
+    }
+  }
+
+  console.log();
+  console.log(`  ${c.bold}Ready!${c.reset} You can now:`);
+  console.log(`  ${c.dim}•${c.reset} Scan packages:  ${c.cyan}agentaudit scan <repo-url>${c.reset}`);
+  console.log(`  ${c.dim}•${c.reset} Check registry:  ${c.cyan}agentaudit check <name>${c.reset}`);
+  console.log(`  ${c.dim}•${c.reset} Submit reports via MCP in Claude/Cursor/Windsurf`);
+  console.log();
+}
 
 // ── Helpers ──────────────────────────────────────────────
 
@@ -521,10 +632,12 @@ async function main() {
   if (args.length === 0 || args[0] === '--help' || args[0] === '-h') {
     banner();
     console.log(`  ${c.bold}Usage:${c.reset}`);
+    console.log(`    agentaudit setup                            Register + configure API key`);
     console.log(`    agentaudit scan <repo-url> [repo-url...]    Scan repositories`);
     console.log(`    agentaudit check <package-name>             Look up in registry`);
     console.log();
     console.log(`  ${c.bold}Examples:${c.reset}`);
+    console.log(`    agentaudit setup`);
     console.log(`    agentaudit scan https://github.com/owner/repo`);
     console.log(`    agentaudit scan repo1.git repo2.git repo3.git`);
     console.log(`    agentaudit check fastmcp`);
@@ -536,6 +649,11 @@ async function main() {
   const targets = args.slice(1);
   
   banner();
+  
+  if (command === 'setup') {
+    await setupCommand();
+    return;
+  }
   
   if (command === 'check') {
     if (targets.length === 0) {

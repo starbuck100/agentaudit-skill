@@ -65,11 +65,19 @@ const PRIORITY_FILES = [
 
 function loadApiKey() {
   if (process.env.AGENTAUDIT_API_KEY) return process.env.AGENTAUDIT_API_KEY;
-  const credPath = path.join(SKILL_DIR, 'config', 'credentials.json');
-  if (fs.existsSync(credPath)) {
-    try {
-      return JSON.parse(fs.readFileSync(credPath, 'utf8')).api_key || '';
-    } catch { return ''; }
+  const home = process.env.HOME || process.env.USERPROFILE || '';
+  const xdg = process.env.XDG_CONFIG_HOME || path.join(home, '.config');
+  const paths = [
+    path.join(SKILL_DIR, 'config', 'credentials.json'),
+    path.join(xdg, 'agentaudit', 'credentials.json'),
+  ];
+  for (const p of paths) {
+    if (fs.existsSync(p)) {
+      try {
+        const key = JSON.parse(fs.readFileSync(p, 'utf8')).api_key;
+        if (key) return key;
+      } catch {}
+    }
   }
   return '';
 }
